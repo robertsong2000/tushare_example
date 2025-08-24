@@ -294,6 +294,95 @@ class TushareClient:
             
         return self._make_request('daily_basic', **params)
     
+    def get_news(self,
+                src: Optional[str] = None,
+                start_date: Optional[str] = None,
+                end_date: Optional[str] = None,
+                limit: int = 100) -> pd.DataFrame:
+        """
+        获取财经新闻
+        
+        Args:
+            src: 新闻来源
+            start_date: 开始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+            limit: 单次获取数量限制
+            
+        Returns:
+            pd.DataFrame: 财经新闻数据
+        """
+        params = {'limit': limit}
+        if src:
+            params['src'] = src
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+            
+        return self._make_request('news', **params)
+    
+    def get_announcement(self,
+                        ts_code: Optional[str] = None,
+                        ann_date: Optional[str] = None,
+                        start_date: Optional[str] = None,
+                        end_date: Optional[str] = None,
+                        year: Optional[str] = None,
+                        limit: int = 100) -> pd.DataFrame:
+        """
+        获取上市公司公告
+        
+        Args:
+            ts_code: 股票代码
+            ann_date: 公告日期 YYYYMMDD
+            start_date: 开始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+            year: 年份 YYYY
+            limit: 单次获取数量限制
+            
+        Returns:
+            pd.DataFrame: 公告数据
+        """
+        params = {'limit': limit}
+        if ts_code:
+            params['ts_code'] = ts_code
+        if ann_date:
+            params['ann_date'] = ann_date
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+        if year:
+            params['year'] = year
+            
+        return self._make_request('anns', **params)
+    
+    def get_report(self,
+                  ts_code: Optional[str] = None,
+                  start_date: Optional[str] = None,
+                  end_date: Optional[str] = None,
+                  limit: int = 100) -> pd.DataFrame:
+        """
+        获取券商研报数据
+        
+        Args:
+            ts_code: 股票代码
+            start_date: 开始日期 YYYYMMDD
+            end_date: 结束日期 YYYYMMDD
+            limit: 单次获取数量限制
+            
+        Returns:
+            pd.DataFrame: 研报数据
+        """
+        params = {'limit': limit}
+        if ts_code:
+            params['ts_code'] = ts_code
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+            
+        return self._make_request('report', **params)
+    
     def save_data(self, data: pd.DataFrame, filename: str, format: str = 'csv'):
         """
         保存数据到文件

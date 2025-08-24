@@ -7,6 +7,7 @@ Tushare 使用示例包
 from .stock_basic import StockInfoAnalyzer, demo_stock_basic_info
 from .kline_analysis import KLineAnalyzer, demo_kline_analysis
 from .financial_analysis import FinancialAnalyzer, demo_financial_analysis
+from .news_analysis import NewsAnalyzer, demo_news_analysis
 
 __all__ = [
     "StockInfoAnalyzer",
@@ -14,5 +15,7 @@ __all__ = [
     "KLineAnalyzer",
     "demo_kline_analysis",
     "FinancialAnalyzer",
-    "demo_financial_analysis"
+    "demo_financial_analysis",
+    "NewsAnalyzer",
+    "demo_news_analysis"
 ]

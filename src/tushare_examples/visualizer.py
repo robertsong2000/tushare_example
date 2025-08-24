@@ -561,6 +561,308 @@ class StockVisualizer:
         except Exception as e:
             self.logger.error(f"保存图表失败: {str(e)}")
             raise
+    
+    def plot_news_sentiment(self,
+                           sentiment_data: pd.DataFrame,
+                           title: str = "新闻情感分析",
+                           figsize: Tuple[int, int] = None) -> plt.Figure:
+        """
+        绘制新闻情感分析图表
+        
+        Args:
+            sentiment_data: 情感分析数据，包含positive, negative, neutral列
+            title: 图表标题
+            figsize: 图表大小
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (self.config.chart_width/100, self.config.chart_height/100)
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+        
+        # 情感分布饼图
+        sentiment_avg = sentiment_data.mean()
+        colors = ['#ff6b6b', '#4ecdc4', '#95a5a6']
+        labels = ['正面', '负面', '中性']
+        values = [sentiment_avg['positive'], sentiment_avg['negative'], sentiment_avg['neutral']]
+        
+        ax1.pie(values, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+        ax1.set_title('情感分布')
+        
+        # 情感时间序列（如果有时间信息）
+        if len(sentiment_data) > 1:
+            x = range(len(sentiment_data))
+            ax2.plot(x, sentiment_data['positive'], color='green', label='正面', marker='o')
+            ax2.plot(x, sentiment_data['negative'], color='red', label='负面', marker='s')
+            ax2.plot(x, sentiment_data['neutral'], color='gray', label='中性', marker='^')
+            ax2.set_xlabel('时间序列')
+            ax2.set_ylabel('情感得分')
+            ax2.set_title('情感变化趋势')
+            ax2.legend()
+            ax2.grid(True, alpha=0.3)
+        else:
+            ax2.text(0.5, 0.5, '数据不足\n无法显示趋势', 
+                    ha='center', va='center', transform=ax2.transAxes, fontsize=14)
+        
+        plt.suptitle(title, fontsize=16, fontweight='bold')
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制情感分析图表: {title}")
+        return fig
+    
+    def plot_news_frequency(self,
+                          daily_counts: Dict,
+                          title: str = "新闻发布频率",
+                          figsize: Tuple[int, int] = None) -> plt.Figure:
+        """
+        绘制新闻发布频率图表
+        
+        Args:
+            daily_counts: 每日新闻数量字典
+            title: 图表标题
+            figsize: 图表大小
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (self.config.chart_width/100, self.config.chart_height/100)
+        
+        if not daily_counts:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.text(0.5, 0.5, '暂无数据', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=16)
+            ax.set_title(title)
+            return fig
+        
+        # 转换日期和数量
+        dates = list(daily_counts.keys())
+        counts = list(daily_counts.values())
+        
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # 绘制柱状图
+        bars = ax.bar(dates, counts, color=self.colors['ma5'], alpha=0.7)
+        
+        # 添加数值标签
+        for bar, count in zip(bars, counts):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                   str(count), ha='center', va='bottom')
+        
+        ax.set_xlabel('日期')
+        ax.set_ylabel('新闻数量')
+        ax.set_title(title)
+        ax.grid(True, alpha=0.3)
+        
+        # 旋转日期标签
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制新闻频率图表: {title}")
+        return fig
+    
+    def plot_news_sources(self,
+                         source_counts: Dict,
+                         title: str = "新闻来源分布",
+                         figsize: Tuple[int, int] = None,
+                         top_n: int = 10) -> plt.Figure:
+        """
+        绘制新闻来源分布图表
+        
+        Args:
+            source_counts: 新闻来源统计字典
+            title: 图表标题
+            figsize: 图表大小
+            top_n: 显示前N个来源
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (self.config.chart_width/100, self.config.chart_height/100)
+        
+        if not source_counts:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.text(0.5, 0.5, '暂无数据', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=16)
+            ax.set_title(title)
+            return fig
+        
+        # 取前N个来源
+        sorted_sources = sorted(source_counts.items(), key=lambda x: x[1], reverse=True)[:top_n]
+        sources = [item[0] for item in sorted_sources]
+        counts = [item[1] for item in sorted_sources]
+        
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # 绘制水平柱状图
+        colors = plt.cm.Set3(np.linspace(0, 1, len(sources)))
+        bars = ax.barh(sources, counts, color=colors)
+        
+        # 添加数值标签
+        for bar, count in zip(bars, counts):
+            width = bar.get_width()
+            ax.text(width + 0.1, bar.get_y() + bar.get_height()/2,
+                   str(count), ha='left', va='center')
+        
+        ax.set_xlabel('新闻数量')
+        ax.set_ylabel('新闻来源')
+        ax.set_title(title)
+        ax.grid(True, alpha=0.3, axis='x')
+        
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制新闻来源图表: {title}")
+        return fig
+    
+    def plot_keywords_cloud(self,
+                          keywords: Dict[str, int],
+                          title: str = "新闻关键词",
+                          figsize: Tuple[int, int] = None,
+                          max_words: int = 20) -> plt.Figure:
+        """
+        绘制关键词词云图（简化版）
+        
+        Args:
+            keywords: 关键词频率字典
+            title: 图表标题
+            figsize: 图表大小
+            max_words: 最大显示词数
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (self.config.chart_width/100, self.config.chart_height/100)
+        
+        if not keywords:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.text(0.5, 0.5, '暂无关键词数据', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=16)
+            ax.set_title(title)
+            return fig
+        
+        # 取前N个关键词
+        sorted_keywords = sorted(keywords.items(), key=lambda x: x[1], reverse=True)[:max_words]
+        words = [item[0] for item in sorted_keywords]
+        frequencies = [item[1] for item in sorted_keywords]
+        
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # 使用柱状图显示关键词频率
+        colors = plt.cm.viridis(np.linspace(0, 1, len(words)))
+        bars = ax.bar(range(len(words)), frequencies, color=colors)
+        
+        # 设置x轴标签
+        ax.set_xticks(range(len(words)))
+        ax.set_xticklabels(words, rotation=45, ha='right')
+        
+        # 添加数值标签
+        for bar, freq in zip(bars, frequencies):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                   str(freq), ha='center', va='bottom')
+        
+        ax.set_xlabel('关键词')
+        ax.set_ylabel('频率')
+        ax.set_title(title)
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制关键词图表: {title}")
+        return fig
+    
+    def create_news_dashboard(self,
+                            news_report: Dict[str, Any],
+                            save_path: Optional[str] = None) -> plt.Figure:
+        """
+        创建新闻分析仪表板
+        
+        Args:
+            news_report: 新闻分析报告
+            save_path: 保存路径
+            
+        Returns:
+            plt.Figure: 仪表板图表
+        """
+        fig = plt.figure(figsize=(16, 12))
+        
+        # 创建子图网格
+        gs = fig.add_gridspec(3, 2, hspace=0.3, wspace=0.3)
+        
+        stock_code = news_report.get('stock_code', '全市场')
+        
+        try:
+            # 1. 新闻频率图
+            if 'news_analysis' in news_report and 'daily_counts' in news_report['news_analysis']:
+                ax1 = fig.add_subplot(gs[0, 0])
+                daily_counts = news_report['news_analysis']['daily_counts']
+                if daily_counts:
+                    dates = list(daily_counts.keys())
+                    counts = list(daily_counts.values())
+                    ax1.bar(dates, counts, color=self.colors['ma5'], alpha=0.7)
+                    ax1.set_title('新闻发布频率')
+                    ax1.set_ylabel('数量')
+                    plt.setp(ax1.get_xticklabels(), rotation=45)
+                else:
+                    ax1.text(0.5, 0.5, '暂无数据', ha='center', va='center', transform=ax1.transAxes)
+            
+            # 2. 情感分析饼图
+            if 'sentiment_analysis' in news_report:
+                ax2 = fig.add_subplot(gs[0, 1])
+                sentiment = news_report['sentiment_analysis']['sentiment_distribution']
+                labels = ['正面', '负面', '中性']
+                values = [sentiment['positive'], sentiment['negative'], sentiment['neutral']]
+                colors_pie = ['#2ecc71', '#e74c3c', '#95a5a6']
+                ax2.pie(values, labels=labels, colors=colors_pie, autopct='%1.1f%%', startangle=90)
+                ax2.set_title('情感分布')
+            
+            # 3. 新闻来源分布
+            if 'news_analysis' in news_report and 'source_counts' in news_report['news_analysis']:
+                ax3 = fig.add_subplot(gs[1, :])
+                source_counts = news_report['news_analysis']['source_counts']
+                if source_counts:
+                    sorted_sources = sorted(source_counts.items(), key=lambda x: x[1], reverse=True)[:8]
+                    sources = [item[0] for item in sorted_sources]
+                    counts = [item[1] for item in sorted_sources]
+                    ax3.barh(sources, counts, color=plt.cm.Set3(np.linspace(0, 1, len(sources))))
+                    ax3.set_title('新闻来源分布')
+                    ax3.set_xlabel('数量')
+                else:
+                    ax3.text(0.5, 0.5, '暂无来源数据', ha='center', va='center', transform=ax3.transAxes)
+            
+            # 4. 关键词频率
+            if 'news_analysis' in news_report and 'top_keywords' in news_report['news_analysis']:
+                ax4 = fig.add_subplot(gs[2, :])
+                keywords = news_report['news_analysis']['top_keywords']
+                if keywords:
+                    words = list(keywords.keys())[:10]
+                    frequencies = list(keywords.values())[:10]
+                    ax4.bar(range(len(words)), frequencies, color=plt.cm.viridis(np.linspace(0, 1, len(words))))
+                    ax4.set_xticks(range(len(words)))
+                    ax4.set_xticklabels(words, rotation=45, ha='right')
+                    ax4.set_title('热门关键词')
+                    ax4.set_ylabel('频率')
+                else:
+                    ax4.text(0.5, 0.5, '暂无关键词数据', ha='center', va='center', transform=ax4.transAxes)
+            
+        except Exception as e:
+            self.logger.error(f"创建仪表板失败: {str(e)}")
+        
+        # 设置总标题
+        analysis_period = news_report.get('analysis_period', 30)
+        fig.suptitle(f'{stock_code} 新闻分析仪表板 (最近{analysis_period}天)', 
+                    fontsize=16, fontweight='bold')
+        
+        if save_path:
+            self.save_chart(fig, save_path)
+        
+        self.logger.info(f"成功创建新闻仪表板: {stock_code}")
+        return fig
 
 
 def demo_visualization():
