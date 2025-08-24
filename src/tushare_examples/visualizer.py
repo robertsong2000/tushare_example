@@ -19,7 +19,7 @@ import logging
 from typing import Optional, List, Dict, Any, Tuple, Union
 from datetime import datetime
 
-from ..config import get_config
+from .config import get_config
 
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
