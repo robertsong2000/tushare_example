@@ -14,13 +14,20 @@ plotly>=5.0.0
 mplfinance>=0.12.0
 
 # 技术指标计算
+# 注意：安装 TA-Lib 前需要先安装系统依赖：brew install ta-lib (macOS)
 TA-Lib>=0.4.0
 
 # 配置管理
 python-dotenv>=0.19.0
 
+# Web相关依赖
+requests>=2.26.0
+beautifulsoup4>=4.9.0
+lxml>=4.6.0
+
 # 数据存储（可选）
 sqlalchemy>=1.4.0
 
-# 工具库
-requests>=2.26.0
+# 机器学习和文本处理（可选）
+scikit-learn>=1.0.0
+jieba>=0.42.0

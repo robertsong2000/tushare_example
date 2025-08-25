@@ -27,6 +27,7 @@ from src.tushare_examples.examples.stock_basic import demo_stock_basic_info
 from src.tushare_examples.examples.kline_analysis import demo_kline_analysis
 from src.tushare_examples.examples.financial_analysis import demo_financial_analysis
 from src.tushare_examples.examples.news_analysis import demo_news_analysis
+from src.tushare_examples.examples.price_query import demo_price_query
 from src.tushare_examples.visualizer import demo_visualization
 
 
@@ -105,6 +106,7 @@ def run_comprehensive_demo(stock_code: str = "000001.SZ", days: int = 180):
     # 演示各个模块
     demos = [
         ("股票基本信息查询", demo_stock_basic_info),
+        ("股价实时查询", demo_price_query),
         ("新闻和公告分析", demo_news_analysis),
         ("数据可视化功能", demo_visualization),
     ]
@@ -152,6 +154,7 @@ def run_specific_demo(demo_type: str, **kwargs):
         'kline': ('K线数据分析', demo_kline_analysis),
         'financial': ('财务数据分析', demo_financial_analysis),
         'news': ('新闻和公告分析', demo_news_analysis),
+        'price': ('股价实时查询', demo_price_query),
         'visualization': ('数据可视化', demo_visualization)
     }
     
@@ -189,7 +192,7 @@ def main():
     )
     
     parser.add_argument('--demo', 
-                       choices=['basic', 'kline', 'financial', 'news', 'visualization'],
+                       choices=['basic', 'kline', 'financial', 'news', 'price', 'visualization'],
                        help='运行特定演示类型')
     
     parser.add_argument('--stock', 

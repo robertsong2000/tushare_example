@@ -383,6 +383,110 @@ class TushareClient:
             
         return self._make_request('report', **params)
     
+    def get_realtime_quote(self,
+                          ts_codes: str) -> pd.DataFrame:
+        """
+        获取实时股价数据
+        
+        Args:
+            ts_codes: 股票代码，多个用逗号分隔
+            
+        Returns:
+            pd.DataFrame: 实时行情数据
+        """
+        params = {'ts_code': ts_codes}
+        return self._make_request('query', **params)
+    
+    def get_latest_price(self,
+                        ts_code: str,
+                        trade_date: Optional[str] = None) -> pd.DataFrame:
+        """
+        获取最新股价数据（使用daily接口获取最新交易日数据）
+        
+        Args:
+            ts_code: 股票代码
+            trade_date: 交易日期 YYYYMMDD，不填则获取最新
+            
+        Returns:
+            pd.DataFrame: 最新价格数据
+        """
+        params = {'ts_code': ts_code}
+        if trade_date:
+            params['trade_date'] = trade_date
+        else:
+            # 获取最近的交易日数据
+            from datetime import datetime, timedelta
+            # 获取最近10个交易日的数据，然后取最新的
+            end_date = datetime.now().strftime('%Y%m%d')
+            start_date = (datetime.now() - timedelta(days=15)).strftime('%Y%m%d')
+            params['start_date'] = start_date
+            params['end_date'] = end_date
+            
+        return self._make_request('daily', **params)
+    
+    def get_stock_realtime_info(self,
+                               ts_code: str) -> Dict[str, Any]:
+        """
+        获取股票实时信息（综合最新价格和基本信息）
+        
+        Args:
+            ts_code: 股票代码
+            
+        Returns:
+            Dict: 股票实时信息
+        """
+        try:
+            # 获取股票基本信息
+            stock_basic = self.get_stock_basic()
+            stock_info = stock_basic[stock_basic['ts_code'] == ts_code]
+            
+            if stock_info.empty:
+                return {'error': f'未找到股票代码 {ts_code} 的信息'}
+            
+            stock_data = stock_info.iloc[0]
+            
+            # 获取最新价格数据
+            latest_price_data = self.get_latest_price(ts_code)
+            
+            result = {
+                'ts_code': ts_code,
+                'name': stock_data.get('name', 'N/A'),
+                'industry': stock_data.get('industry', 'N/A'),
+                'area': stock_data.get('area', 'N/A'),
+                'market': stock_data.get('market', 'N/A'),
+                'list_date': stock_data.get('list_date', 'N/A'),
+            }
+            
+            if not latest_price_data.empty:
+                # 取最新的交易日数据
+                latest_data = latest_price_data.iloc[0]
+                result.update({
+                    'trade_date': latest_data.get('trade_date', 'N/A'),
+                    'open': latest_data.get('open', 0),
+                    'high': latest_data.get('high', 0),
+                    'low': latest_data.get('low', 0),
+                    'close': latest_data.get('close', 0),
+                    'pre_close': latest_data.get('pre_close', 0),
+                    'change': latest_data.get('change', 0),
+                    'pct_chg': latest_data.get('pct_chg', 0),
+                    'vol': latest_data.get('vol', 0),
+                    'amount': latest_data.get('amount', 0),
+                })
+                
+                # 计算涨跌幅和涨跌额
+                if result['pre_close'] and result['pre_close'] != 0:
+                    price_change = result['close'] - result['pre_close']
+                    pct_change = (price_change / result['pre_close']) * 100
+                    result['price_change'] = price_change
+                    result['pct_change_calculated'] = pct_change
+            else:
+                result['error'] = '暂无最新交易数据'
+            
+            return result
+            
+        except Exception as e:
+            return {'error': f'获取股票信息失败: {str(e)}'}
+    
     def save_data(self, data: pd.DataFrame, filename: str, format: str = 'csv'):
         """
         保存数据到文件

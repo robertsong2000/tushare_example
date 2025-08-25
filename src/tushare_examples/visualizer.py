@@ -863,6 +863,270 @@ class StockVisualizer:
         
         self.logger.info(f"成功创建新闻仪表板: {stock_code}")
         return fig
+    
+    def plot_price_info_card(self,
+                           price_info: Dict[str, Any],
+                           figsize: Tuple[int, int] = None) -> plt.Figure:
+        """
+        绘制股价信息卡片
+        
+        Args:
+            price_info: 股价信息字典
+            figsize: 图表大小
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (10, 6)
+        
+        if 'error' in price_info:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.text(0.5, 0.5, f"错误: {price_info['error']}", 
+                   ha='center', va='center', transform=ax.transAxes, 
+                   fontsize=16, color='red')
+            ax.set_title('股价信息获取失败')
+            ax.axis('off')
+            return fig
+        
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=figsize)
+        
+        # 获取数据
+        ts_code = price_info.get('ts_code', 'N/A')
+        name = price_info.get('name', 'N/A')
+        current_price = price_info.get('current_price', 0)
+        pct_change = price_info.get('pct_change', 0)
+        change_direction = price_info.get('change_direction', 'flat')
+        
+        # 颜色设置
+        color = '#ff4444' if change_direction == 'up' else '#00aa00' if change_direction == 'down' else '#666666'
+        
+        # 1. 价格显示
+        ax1.text(0.5, 0.7, f'{current_price:.2f}', ha='center', va='center', 
+                fontsize=24, fontweight='bold', color=color)
+        ax1.text(0.5, 0.4, f'{pct_change:+.2f}%', ha='center', va='center', 
+                fontsize=16, color=color)
+        ax1.text(0.5, 0.1, f'{name}\n({ts_code})', ha='center', va='center', 
+                fontsize=12)
+        ax1.set_title('当前股价', fontsize=14, fontweight='bold')
+        ax1.axis('off')
+        
+        # 2. 价格范围
+        prices = [
+            price_info.get('low_price', 0),
+            price_info.get('open_price', 0), 
+            current_price,
+            price_info.get('high_price', 0)
+        ]
+        labels = ['最低', '开盘', '当前', '最高']
+        colors_bar = ['green', 'blue', color, 'red']
+        
+        bars = ax2.bar(labels, prices, color=colors_bar, alpha=0.7)
+        ax2.set_title('价格范围', fontsize=14, fontweight='bold')
+        ax2.set_ylabel('价格 (元)')
+        
+        # 添加数值标签
+        for bar, price in zip(bars, prices):
+            height = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
+                    f'{price:.2f}', ha='center', va='bottom', fontsize=10)
+        
+        # 3. 成交情况
+        volume = price_info.get('volume', 0)
+        amount = price_info.get('amount', 0)
+        
+        ax3.text(0.5, 0.7, f'{volume:,.0f}', ha='center', va='center', 
+                fontsize=16, fontweight='bold')
+        ax3.text(0.5, 0.5, '手', ha='center', va='center', fontsize=12)
+        ax3.text(0.5, 0.3, f'{amount:,.0f}', ha='center', va='center', 
+                fontsize=14)
+        ax3.text(0.5, 0.1, '千元', ha='center', va='center', fontsize=12)
+        ax3.set_title('成交情况', fontsize=14, fontweight='bold')
+        ax3.axis('off')
+        
+        # 4. 基本信息
+        info_text = f"""行业: {price_info.get('industry', 'N/A')}
+地区: {price_info.get('area', 'N/A')}
+市场: {price_info.get('market', 'N/A')}
+交易日: {price_info.get('trade_date', 'N/A')}"""
+        
+        ax4.text(0.1, 0.5, info_text, ha='left', va='center', 
+                fontsize=11, transform=ax4.transAxes)
+        ax4.set_title('基本信息', fontsize=14, fontweight='bold')
+        ax4.axis('off')
+        
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制股价信息卡片: {ts_code}")
+        return fig
+    
+    def plot_price_trend(self,
+                        history_data: pd.DataFrame,
+                        title: str = "股价走势图",
+                        figsize: Tuple[int, int] = None) -> plt.Figure:
+        """
+        绘制股价走势图
+        
+        Args:
+            history_data: 历史价格数据
+            title: 图表标题
+            figsize: 图表大小
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (self.config.chart_width/100, self.config.chart_height/100)
+        
+        if history_data.empty:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.text(0.5, 0.5, '暂无历史数据', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=16)
+            ax.set_title(title)
+            return fig
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, height_ratios=[3, 1])
+        
+        # 转换日期
+        dates = pd.to_datetime(history_data['trade_date'])
+        
+        # 1. 价格走势图
+        ax1.plot(dates, history_data['close'], color=self.colors['ma20'], linewidth=2, label='收盘价')
+        
+        # 添加移动平均线
+        if 'ma5' in history_data.columns:
+            ax1.plot(dates, history_data['ma5'], color=self.colors['ma5'], linewidth=1, label='MA5')
+        if 'ma10' in history_data.columns:
+            ax1.plot(dates, history_data['ma10'], color=self.colors['ma10'], linewidth=1, label='MA10')
+        if 'ma20' in history_data.columns:
+            ax1.plot(dates, history_data['ma20'], color=self.colors['ma60'], linewidth=1, label='MA20')
+        
+        ax1.set_title(title, fontsize=16, fontweight='bold')
+        ax1.set_ylabel('价格 (元)')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # 2. 成交量
+        colors_vol = ['red' if close >= open_price else 'green' 
+                     for close, open_price in zip(history_data['close'], history_data['open'])]
+        
+        ax2.bar(dates, history_data['vol'], color=colors_vol, alpha=0.6)
+        ax2.set_ylabel('成交量 (手)')
+        ax2.set_xlabel('日期')
+        ax2.grid(True, alpha=0.3)
+        
+        # 旋转日期标签
+        plt.setp(ax2.get_xticklabels(), rotation=45)
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制股价走势图: {title}")
+        return fig
+    
+    def plot_multiple_prices_comparison(self,
+                                       multiple_prices: Dict[str, Dict[str, Any]],
+                                       title: str = "多股价格对比",
+                                       figsize: Tuple[int, int] = None) -> plt.Figure:
+        """
+        绘制多股价格对比图
+        
+        Args:
+            multiple_prices: 多股价格数据
+            title: 图表标题
+            figsize: 图表大小
+            
+        Returns:
+            plt.Figure: 图表对象
+        """
+        if figsize is None:
+            figsize = (12, 8)
+        
+        # 过滤有效数据
+        valid_data = {k: v for k, v in multiple_prices.items() if 'error' not in v}
+        
+        if not valid_data:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.text(0.5, 0.5, '暂无有效数据', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=16)
+            ax.set_title(title)
+            return fig
+        
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=figsize)
+        
+        # 准备数据
+        stock_names = []
+        current_prices = []
+        pct_changes = []
+        volumes = []
+        
+        for ts_code, info in valid_data.items():
+            stock_names.append(f"{info.get('name', 'N/A')}\n({ts_code})")
+            current_prices.append(info.get('current_price', 0))
+            pct_changes.append(info.get('pct_change', 0))
+            volumes.append(info.get('volume', 0))
+        
+        # 1. 当前价格对比
+        bars1 = ax1.bar(range(len(stock_names)), current_prices, 
+                        color=plt.cm.viridis(np.linspace(0, 1, len(stock_names))))
+        ax1.set_title('当前价格对比')
+        ax1.set_ylabel('价格 (元)')
+        ax1.set_xticks(range(len(stock_names)))
+        ax1.set_xticklabels(stock_names, fontsize=9)
+        
+        # 添加数值标签
+        for bar, price in zip(bars1, current_prices):
+            height = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
+                    f'{price:.2f}', ha='center', va='bottom', fontsize=9)
+        
+        # 2. 涨跌幅对比
+        colors_change = ['red' if pct >= 0 else 'green' for pct in pct_changes]
+        bars2 = ax2.bar(range(len(stock_names)), pct_changes, color=colors_change, alpha=0.7)
+        ax2.set_title('涨跌幅对比')
+        ax2.set_ylabel('涨跌幅 (%)')
+        ax2.set_xticks(range(len(stock_names)))
+        ax2.set_xticklabels(stock_names, fontsize=9)
+        ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+        
+        # 添加数值标签
+        for bar, pct in zip(bars2, pct_changes):
+            height = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2., 
+                    height + (height*0.1 if height >= 0 else height*0.1),
+                    f'{pct:+.2f}%', ha='center', 
+                    va='bottom' if height >= 0 else 'top', fontsize=9)
+        
+        # 3. 成交量对比
+        bars3 = ax3.bar(range(len(stock_names)), volumes, 
+                        color=plt.cm.plasma(np.linspace(0, 1, len(stock_names))))
+        ax3.set_title('成交量对比')
+        ax3.set_ylabel('成交量 (手)')
+        ax3.set_xticks(range(len(stock_names)))
+        ax3.set_xticklabels(stock_names, fontsize=9)
+        
+        # 4. 综合信息表
+        table_data = []
+        for ts_code, info in valid_data.items():
+            table_data.append([
+                info.get('name', 'N/A')[:6],  # 截取前6个字符
+                f"{info.get('current_price', 0):.2f}",
+                f"{info.get('pct_change', 0):+.2f}%",
+                info.get('industry', 'N/A')[:4]  # 截取前4个字符
+            ])
+        
+        table = ax4.table(cellText=table_data,
+                         colLabels=['股票', '价格', '涨跌幅', '行业'],
+                         cellLoc='center',
+                         loc='center')
+        table.auto_set_font_size(False)
+        table.set_fontsize(9)
+        table.scale(1, 1.5)
+        ax4.axis('off')
+        ax4.set_title('综合信息')
+        
+        plt.tight_layout()
+        
+        self.logger.info(f"成功绘制多股价格对比图: {len(valid_data)}只股票")
+        return fig
 
 
 def demo_visualization():
